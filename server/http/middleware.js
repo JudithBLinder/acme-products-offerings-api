@@ -22,6 +22,7 @@ const standardMiddleware = [
   express.json(),
   customCORSMiddleware,
   express.static(path.join(__dirname, '../../dist')),
+  express.static(path.join(__dirname, '../../client/template')),
 ];
 
 // Put them all together into a single function.

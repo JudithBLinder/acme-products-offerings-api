@@ -1,107 +1,168 @@
 import React, { Component } from 'react';
-import ReactDOM from 'react-dom';
-import { HashRouter, Switch, Route, Redirect } from 'react-router-dom';
-import { delay } from './utils/index';
+import ReactDOM, { render } from 'react-dom';
+import { Route, HashRouter, Link, Switch, Redirect } from 'react-router-dom';
+import Axios from 'axios';
 
-const APP_STARTUP_TIME = 'app_startup_time';
-
-console.time(APP_STARTUP_TIME);
-
-const { API_URL } = process.env;
-
-// TODO: I can't stress enough, you can delete everything in this component. None of it matters. Its just meant to be an example of writing react inside of here. You can add more files with more components, and import them into this one.
-class App extends Component {
-  state = { loaded: null };
-
-  componentDidMount() {
-    // Creates a race between a 5 second timeout and a call to the API. Allows us to detect the call hanging.
-    Promise.race([this.checkHealth(), delay(5000, true)])
-      .then(() => {
-        this.setState({
-          loaded: true,
-        });
-      })
-      .catch((e) => {
-        if (e instanceof Error) {
-          console.error(
-            'Timeout/Failure while connecting to API. Are you SURE you started the API? Try opening a separate terminal session and running "npm run start:server"'
-          );
-        }
-
-        this.setState({
-          loaded: false,
-        });
-      });
-  }
-
-  // Getter to simplify the logic inside of render.
-  get loadedState() {
-    const { loaded } = this.state;
-    if (loaded === null) {
-      return {
-        color: 'gray',
-        message: 'Connecting to API',
-      };
-    }
-
+const Companies = ({ products, companies, offerings }) => {
+  const processed = companies.map((company) => {
     return {
-      color: loaded ? 'green' : 'red',
-      message: loaded ? 'Connected!' : 'Failed to connect!',
+      ...company,
+      offered: offerings
+        .filter((offering) => offering.companyId === company.id)
+        .map((offering) => {
+          return {
+            ...offering,
+            product: products.find(
+              (product) => product.id === offering.productId
+            ),
+          };
+        }),
+    };
+  });
+  return (
+    <ul>
+      {processed.map((company) => (
+        <li key={company.id}>
+          <h2>{company.name}</h2>
+          Offering:
+          <ul>
+            {company.offered.map((offer) => (
+              <li key={offer.id}>
+                {' '}
+                {offer.product.name} at {offer.price} (suggestedPrice:{' '}
+                {offer.product.suggestedPrice})
+              </li>
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ul>
+  );
+};
+const Products = ({ products, companies, offerings }) => {
+  const processed = products.map((product) => {
+    return {
+      ...product,
+      offered: offerings
+        .filter((offering) => offering.productId === product.id)
+        .map((offering) => {
+          return {
+            ...offering,
+            company: companies.find(
+              (company) => company.id === offering.companyId
+            ),
+          };
+        }),
+    };
+  });
+  return (
+    <ul>
+      {processed.map((product) => (
+        <li key={product.id}>
+          <h2>{product.name}</h2> ${product.suggestedPrice}
+          <div>{product.description}</div>
+          Offered By: {product.offered.length}
+          <ul>
+            {product.offered.map((offer) => (
+              <li key={offer.id}>
+                {' '}
+                {offer.company.name} at {offer.price}
+              </li>
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+const Nav = ({ companies, products, path }) => {
+  const links = [
+    { to: 'companies', text: `Companies (${companies.length})` },
+    { to: 'products', text: `Products (${products.length})` },
+  ];
+  return (
+    <nav>
+      <h1 id="title">ACME OFFERINGS * REACT API</h1>
+      <div>
+        {links.map((link, idx) => (
+          <Link
+            className={path.slice(1) === link.to ? 'selected' : ''}
+            key={idx}
+            to={link.to}
+          >
+            {link.text}
+          </Link>
+        ))}
+      </div>
+    </nav>
+  );
+};
+
+const API = '/api/';
+
+class App extends Component {
+  constructor() {
+    super();
+    this.state = {
+      companies: [],
+      products: [],
+      offerings: [],
     };
   }
 
-  // Call to the API.
-  checkHealth = () => {
-    return fetch(`${API_URL}/api/health`)
-      .then((res) => res.json())
-      .then(() => {
-        return true;
-      })
-      .catch((e) => {
-        console.error(`Failed to load initial health check.`, e);
-        throw e;
-      });
-  };
+  componentDidMount() {
+    Promise.all(
+      ['companies', 'products', 'offerings'].map((entity) =>
+        Axios.get(`${API}${entity}`)
+      )
+    )
+      .then((responses) => responses.map((response) => response.data))
+      .then(([companies, products, offerings]) =>
+        this.setState({ companies, products, offerings })
+      );
+  }
 
   render() {
+    const { companies, products, offerings } = this.state;
     return (
       <HashRouter>
+        <Route
+          render={({ location }) => (
+            <Nav
+              path={location.pathname}
+              products={products}
+              companies={companies}
+            />
+          )}
+        />
         <Switch>
-          <Route exact path="/">
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                width: '100vw',
-                alignItems: 'center',
-                fontFamily: 'Roboto',
-              }}
-            >
-              <img
-                alt="Beaver"
-                style={{
-                  height: '250px',
-                }}
-                src="https://pbs.twimg.com/profile_images/2779323089/f1d2488fedff90047a32244dbc624e59_400x400.jpeg"
+          <Route
+            path="/products"
+            render={() => (
+              <Products
+                products={products}
+                offerings={offerings}
+                companies={companies}
               />
-              <h2>Beaver</h2>
-              <span
-                style={{
-                  color: this.loadedState.color,
-                  fontSize: '0.8em',
-                }}
-              >
-                {this.loadedState.message}
-              </span>
-            </div>
-          </Route>
-          <Redirect to="/" />
+            )}
+          />
+          <Route
+            path="/companies"
+            render={() => (
+              <Companies
+                products={products}
+                offerings={offerings}
+                companies={companies}
+              />
+            )}
+          />
+          <Redirect to="/companies" />
         </Switch>
       </HashRouter>
     );
   }
 }
 
-ReactDOM.render(<App />, document.querySelector('#app'), () => {
-  console.timeEnd(APP_STARTUP_TIME);
-});
+const app = document.querySelector('#app');
+render(<App />, app);

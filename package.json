@@ -4,12 +4,15 @@
   "description": "This is a \"boiler plate\". Its a foundation to build apps upon.",
   "main": "index.js",
   "dependencies": {
+    "axios": "^0.19.2",
     "chalk": "^4.0.0",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
+    "pg": "^8.2.1",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
-    "react-router-dom": "^5.2.0"
+    "react-router-dom": "^5.2.0",
+    "sequelize": "^5.21.13"
   },
   "scripts": {
     "test": "jest",
@@ -35,6 +38,7 @@
     "@babel/runtime": "^7.9.6",
     "babel-eslint": "^10.1.0",
     "babel-loader": "^8.1.0",
+    "css-loader": "^3.6.0",
     "eslint": "^7.0.0",
     "eslint-config-airbnb": "^18.1.0",
     "eslint-config-prettier": "^6.11.0",
